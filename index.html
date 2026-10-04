@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>متابعة محاضرات الجامعة</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --background: #f5f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --success: #16a34a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Tahoma, Arial, sans-serif;
+      color: var(--text);
+      background: var(--background);
+    }
+
+    .container {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      color: white;
+      padding: 42px 0 70px;
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+    }
+
+    header h1 { margin: 0 0 12px; font-size: clamp(26px, 4vw, 38px); }
+    header p { margin: 0; opacity: .9; font-size: 17px; }
+
+    .summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: -38px;
+      margin-bottom: 26px;
+      padding: 22px 26px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(30, 41, 59, .08);
+    }
+
+    .summary strong { color: var(--primary); font-size: 24px; }
+    .summary span { color: var(--muted); display: block; margin-top: 5px; }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 16px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .reset {
+      color: #b91c1c;
+      background: #fef2f2;
+    }
+
+    .subjects {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      padding-bottom: 40px;
+    }
+
+    .subject {
+      overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(30, 41, 59, .05);
+    }
+
+    .subject-heading {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .subject-heading h2 { margin: 0 0 11px; font-size: 19px; }
+    .progress-row { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; }
+
+    .progress {
+      height: 7px;
+      margin-top: 9px;
+      overflow: hidden;
+      background: #e5e7eb;
+      border-radius: 99px;
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      background: var(--success);
+      transition: width .2s ease;
+    }
+
+    .lectures { padding: 8px 18px 14px; }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      color: #374151;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f1f1;
+    }
+
+    label:last-child { border-bottom: 0; }
+
+    input[type="checkbox"] {
+      width: 19px;
+      height: 19px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    label:has(input:checked) {
+      color: var(--success);
+      text-decoration: line-through;
+    }
+
+    @media (max-width: 500px) {
+      .summary { align-items: flex-start; flex-direction: column; }
+      .reset { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>متابعة محاضرات الجامعة</h1>
+      <p>ضع علامة صح على كل محاضرة تحضرها، وسيتم حفظ تقدمك تلقائيًا.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="summary" aria-live="polite">
+      <div>
+        <strong id="total-progress">0 / 72</strong>
+        <span>محاضرة مكتملة</span>
+      </div>
+      <button class="reset" id="reset-button" type="button">إعادة تعيين الكل</button>
+    </section>
+
+    <section class="subjects" id="subjects"></section>
+  </main>
+
+  <script>
+    const subjectCount = 6;
+    const subjectNames = ["IPG201", "IPG204", "IPI201", "IIS202", "IIS203", "IIS303"];
+    const lecturesPerSubject = 12;
+    const storageKey = "university-lectures-progress";
+    const subjectsElement = document.querySelector("#subjects");
+    const totalProgressElement = document.querySelector("#total-progress");
+
+    let progress = JSON.parse(localStorage.getItem(storageKey) || "{}");
+
+    function createSubjects() {
+      for (let subjectIndex = 1; subjectIndex <= subjectCount; subjectIndex += 1) {
+        const subject = document.createElement("article");
+        subject.className = "subject";
+        subject.dataset.subject = subjectIndex;
+        subject.innerHTML = `
+          <div class="subject-heading">
+            <h2>${subjectNames[subjectIndex - 1]}</h2>
+            <div class="progress-row">
+              <span class="subject-count">0 / ${lecturesPerSubject} محاضرة</span>
+              <span class="subject-percent">0%</span>
+            </div>
+            <div class="progress" aria-hidden="true">
+              <div class="progress-bar"></div>
+            </div>
+          </div>
+          <div class="lectures"></div>
+        `;
+
+        const lectures = subject.querySelector(".lectures");
+        for (let lectureIndex = 1; lectureIndex <= lecturesPerSubject; lectureIndex += 1) {
+          const id = `subject-${subjectIndex}-lecture-${lectureIndex}`;
+          const label = document.createElement("label");
+          label.innerHTML = `
+            <input type="checkbox" id="${id}" data-key="${id}">
+            <span>المحاضرة ${lectureIndex}</span>
+          `;
+          const checkbox = label.querySelector("input");
+          checkbox.checked = Boolean(progress[id]);
+          checkbox.addEventListener("change", () => {
+            progress[id] = checkbox.checked;
+            localStorage.setItem(storageKey, JSON.stringify(progress));
+            updateProgress();
+          });
+          lectures.appendChild(label);
+        }
+
+        subjectsElement.appendChild(subject);
+      }
+    }
+
+    function updateProgress() {
+      let totalCompleted = 0;
+      document.querySelectorAll(".subject").forEach((subject) => {
+        const checkboxes = [...subject.querySelectorAll("input")];
+        const completed = checkboxes.filter((checkbox) => checkbox.checked).length;
+        const percentage = Math.round((completed / lecturesPerSubject) * 100);
+        totalCompleted += completed;
+        subject.querySelector(".subject-count").textContent =
+          `${completed} / ${lecturesPerSubject} محاضرة`;
+        subject.querySelector(".subject-percent").textContent = `${percentage}%`;
+        subject.querySelector(".progress-bar").style.width = `${percentage}%`;
+      });
+      totalProgressElement.textContent = `${totalCompleted} / ${subjectCount * lecturesPerSubject}`;
+    }
+
+    document.querySelector("#reset-button").addEventListener("click", () => {
+      if (!confirm("هل تريد إزالة جميع علامات الصح؟")) return;
+      progress = {};
+      localStorage.removeItem(storageKey);
+      document.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+      updateProgress();
+    });
+
+    createSubjects();
+    updateProgress();
+  </script>
+</body>
+</html>
